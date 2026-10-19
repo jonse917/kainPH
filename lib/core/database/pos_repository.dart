@@ -19,6 +19,16 @@ class CompleteSaleInput {
   final List<SaleLineInput> items;
 }
 
+class ProductOffer {
+  const ProductOffer({required this.product, required this.stock, required this.reorderLevel});
+  final Product product;
+  final int stock;
+  final int reorderLevel;
+
+  bool get outOfStock => stock <= 0;
+  bool get lowStock => stock > 0 && reorderLevel > 0 && stock <= reorderLevel;
+}
+
 class DashboardSnapshot {
   const DashboardSnapshot({required this.todaySales, required this.ordersToday, required this.itemsSoldToday, required this.inventoryUnits, required this.lowStock, required this.outOfStock, required this.recentSales, required this.hourlySales});
   final double todaySales;
@@ -48,6 +58,51 @@ class PosRepository {
         ..where((p) => p.isDeleted.equals(false) & p.isAvailable.equals(true))
         ..orderBy([(p) => OrderingTerm.asc(p.name)]))
       .watch();
+
+  /// Menu and register view: each product with the stock counted against it.
+  Stream<List<ProductOffer>> watchOffers() {
+    late StreamController<List<ProductOffer>> controller;
+    final subscriptions = <StreamSubscription>[];
+    List<Product>? products;
+    List<InventoryData>? inventory;
+
+    void emit() {
+      if (products == null || inventory == null || controller.isClosed) return;
+      final byProduct = <String, List<InventoryData>>{};
+      for (final item in inventory!) {
+        final productId = item.productId;
+        if (productId == null) continue;
+        byProduct.putIfAbsent(productId, () => []).add(item);
+      }
+      controller.add([
+        for (final product in products!)
+          ProductOffer(
+            product: product,
+            stock: (byProduct[product.id] ?? const <InventoryData>[]).fold(0, (total, item) => total + item.quantity),
+            reorderLevel: (byProduct[product.id] ?? const <InventoryData>[]).fold(0, (level, item) => item.reorderLevel > level ? item.reorderLevel : level),
+          ),
+      ]);
+    }
+
+    controller = StreamController<List<ProductOffer>>(
+      onListen: () {
+        subscriptions.add(watchProducts().listen((rows) {
+          products = rows;
+          emit();
+        }));
+        subscriptions.add(watchInventory().listen((rows) {
+          inventory = rows;
+          emit();
+        }));
+      },
+      onCancel: () async {
+        for (final subscription in subscriptions) {
+          await subscription.cancel();
+        }
+      },
+    );
+    return controller.stream;
+  }
 
   Stream<List<InventoryData>> watchInventory() => (db.select(db.inventory)
         ..where((i) => i.isDeleted.equals(false))
@@ -108,15 +163,16 @@ class PosRepository {
     return controller.stream;
   }
 
-  Future<void> createProduct(ProductsCompanion product) async {
+  Future<void> createProduct(ProductsCompanion product, {int openingStock = 0}) async {
+    final stock = openingStock < 0 ? 0 : openingStock;
     await db.transaction(() async {
       await db.into(db.products).insert(product);
-      // Every sellable product gets one stock record. It starts at zero and is
-      // populated from Inventory, which lets sale completion update the same row.
+      // Every sellable product gets one stock record. Zero means out of stock
+      // on the register until Inventory receives more.
       await db.into(db.inventory).insert(InventoryCompanion.insert(
         id: 'INV-${product.id.value}', productId: Value(product.id.value),
         name: product.name.value, category: product.categoryId.value ?? 'Uncategorized',
-        unit: 'pcs', quantity: const Value(0), reorderLevel: const Value(0),
+        unit: 'pcs', quantity: Value(stock), reorderLevel: const Value(5),
         createdAt: product.createdAt.value, updatedAt: product.updatedAt.value,
       ));
     });
@@ -209,7 +265,12 @@ class PosRepository {
       await db.into(db.payments).insert(PaymentsCompanion.insert(id: _id('PAY'), saleId: input.id, method: input.paymentMethod, amount: input.totalAmount, cashReceived: Value(input.cashReceived), changeAmount: Value(input.changeAmount), createdAt: now));
 
       for (final line in input.items) {
+        final product = await (db.select(db.products)..where((p) => p.id.equals(line.productId))).getSingleOrNull();
+        if (product != null && !product.isAvailable) throw StateError('${line.productName} is unavailable.');
         final stocks = await (db.select(db.inventory)..where((i) => i.productId.equals(line.productId) & i.isDeleted.equals(false))).get();
+        if (stocks.isEmpty || stocks.every((stock) => stock.quantity <= 0)) {
+          throw StateError('${line.productName} is out of stock.');
+        }
         for (final stock in stocks) {
           if (stock.quantity < line.quantity) throw StateError('Insufficient stock for ${stock.name}.');
           await (db.update(db.inventory)..where((i) => i.id.equals(stock.id))).write(InventoryCompanion(quantity: Value(stock.quantity - line.quantity), updatedAt: Value(now)));

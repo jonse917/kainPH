@@ -9,6 +9,8 @@ class MenuProduct {
   final List<String> modifiers;
   final String description;
   final String? imagePath;
+  final int stock;
+  final int reorderLevel;
 
   const MenuProduct({
     required this.id,
@@ -21,6 +23,8 @@ class MenuProduct {
     this.modifiers = const [],
     this.description = '',
     this.imagePath,
+    this.stock = 0,
+    this.reorderLevel = 0,
   });
 
   Map<String, dynamic> toMap() => {

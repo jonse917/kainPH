@@ -49,7 +49,7 @@ class AppearanceSettings {
 
   const AppearanceSettings({
     this.themeMode = KainPHThemeMode.light,
-    this.accentColor = const Color(0xFFE85D04),
+    this.accentColor = const Color(0xFFF56B0B),
     this.density = KainPHDensity.standard,
     this.fontScale = KainPHFontScale.standard,
     this.navigationMode = KainPHNavigationMode.sidebar,
@@ -65,8 +65,8 @@ class AppearanceSettings {
     },
     this.businessLogoPath,
     this.businessName = 'KainPH Food Business',
-    this.businessTagline = 'Serving every meal with warmth.',
-    this.brandColor = const Color(0xFFE85D04),
+    this.businessTagline = 'Good Food. More Moments.',
+    this.brandColor = const Color(0xFFF56B0B),
   });
 
   double get fontScaleFactor {

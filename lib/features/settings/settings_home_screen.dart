@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/kainph_theme.dart';
+import '../../core/widgets/page_header.dart';
 import 'appearance_settings_screen.dart';
 import 'tax_receipt_settings_screen.dart';
 
@@ -12,7 +13,7 @@ class SettingsHomeScreen extends StatelessWidget {
     final items = [
       _SettingsTile(
         title: 'Appearance',
-        subtitle: 'Theme, branding, density, and dashboard preferences.',
+        subtitle: 'Theme, branding, and text size.',
         icon: Icons.palette_outlined,
         onTap: () {
           Navigator.of(context).push(
@@ -37,79 +38,16 @@ class SettingsHomeScreen extends StatelessWidget {
     ];
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Settings'),
-      ),
-      body: SafeArea(
-        child: LayoutBuilder(
-          builder: (context, constraints) {
-            final wide = constraints.maxWidth >= 800;
-
-            return Center(
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 1100),
-                child: ListView(
-                  padding: const EdgeInsets.all(20),
-                  children: [
-                    Card(
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Row(
-                          children: [
-                            Container(
-                              width: 48,
-                              height: 48,
-                              decoration: BoxDecoration(
-                                color: KainPHTheme.primary.withValues(alpha: 0.1),
-                                borderRadius: BorderRadius.circular(14),
-                              ),
-                              child: const Icon(
-                                Icons.settings_outlined,
-                                color: KainPHTheme.primary,
-                              ),
-                            ),
-                            const SizedBox(width: 14),
-                            const Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Business Settings',
-                                    style: TextStyle(
-                                      fontSize: 20,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                  SizedBox(height: 6),
-                                  Text(
-                                    'Customize the KainPH experience while keeping the default design system intact.',
-                                    style: TextStyle(color: KainPHTheme.textSecondary),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    if (wide)
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            child: _SettingsColumn(items: items),
-                          ),
-                        ],
-                      )
-                    else
-                      _SettingsColumn(items: items),
-                  ],
-                ),
-              ),
-            );
-          },
-        ),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          const KainPHPageHeader(
+            title: 'Settings',
+            subtitle: 'Appearance, tax, and receipt details.',
+          ),
+          const SizedBox(height: 16),
+          _SettingsColumn(items: items),
+        ],
       ),
     );
   }

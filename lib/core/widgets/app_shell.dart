@@ -1,19 +1,13 @@
 import 'package:flutter/material.dart';
 
 import '../../core/services/appearance_settings_store.dart';
+import '../../core/theme/kainph_catalog.dart';
 import '../../core/theme/kainph_theme.dart';
-import '../../features/analytics/analytics_screen.dart';
-import '../../features/cashier/cashier_screen.dart';
-import '../../features/customers/customers_screen.dart';
 import '../../features/dashboard/dashboard_screen.dart';
 import '../../features/inventory/inventory_screen.dart';
-import '../../features/marketing/marketing_screen.dart';
 import '../../features/menu/menu_screen.dart';
 import '../../features/pos/pos_screen.dart';
-import '../../features/receipts/receipts_screen.dart';
-import '../../features/security/security_screen.dart';
 import '../../features/settings/settings_home_screen.dart';
-import '../../features/system/system_screen.dart';
 
 class KainPHAppShell extends StatefulWidget {
   const KainPHAppShell({super.key});
@@ -23,7 +17,7 @@ class KainPHAppShell extends StatefulWidget {
 }
 
 class _KainPHAppShellState extends State<KainPHAppShell> {
-  int _selectedIndex = 0;
+  int _selectedIndex = 1;
   bool _openMenuProductForm = false;
 
   final List<_NavigationItem> _items = const [
@@ -48,48 +42,11 @@ class _KainPHAppShellState extends State<KainPHAppShell> {
       selectedIcon: Icons.inventory_2,
     ),
     _NavigationItem(
-      label: 'Cashier',
-      icon: Icons.account_balance_wallet_outlined,
-      selectedIcon: Icons.account_balance_wallet,
-    ),
-    _NavigationItem(
-      label: 'Customers',
-      icon: Icons.people_outline,
-      selectedIcon: Icons.people,
-    ),
-    _NavigationItem(
-      label: 'Marketing',
-      icon: Icons.campaign_outlined,
-      selectedIcon: Icons.campaign,
-    ),
-    _NavigationItem(
-      label: 'Analytics',
-      icon: Icons.bar_chart_outlined,
-      selectedIcon: Icons.bar_chart,
-    ),
-    _NavigationItem(
-      label: 'Receipts',
-      icon: Icons.receipt_long_outlined,
-      selectedIcon: Icons.receipt_long,
-    ),
-    _NavigationItem(
-      label: 'Security',
-      icon: Icons.security_outlined,
-      selectedIcon: Icons.security,
-    ),
-    _NavigationItem(
-      label: 'System',
-      icon: Icons.settings_applications_outlined,
-      selectedIcon: Icons.settings_applications,
-    ),
-    _NavigationItem(
       label: 'Settings',
       icon: Icons.settings_outlined,
       selectedIcon: Icons.settings,
     ),
   ];
-
-  final List<int> _phoneDestinations = const [0, 1, 2, 3];
 
   @override
   Widget build(BuildContext context) {
@@ -108,82 +65,21 @@ class _KainPHAppShellState extends State<KainPHAppShell> {
   }
 
   Widget _buildPhoneLayout() {
-    final isMoreSelected = _selectedIndex >= 4;
-
     return Scaffold(
       appBar: _buildAppBar(),
       body: _buildContent(),
       bottomNavigationBar: NavigationBar(
-        selectedIndex:
-            isMoreSelected ? 4 : _phoneDestinations.indexOf(_selectedIndex),
-        onDestinationSelected: _onPhoneDestinationSelected,
+        selectedIndex: _selectedIndex,
+        onDestinationSelected: _selectPage,
         destinations: [
-          ..._phoneDestinations.map(
-            (index) => NavigationDestination(
-              icon: Icon(_items[index].icon),
-              selectedIcon: Icon(_items[index].selectedIcon),
-              label: _items[index].label,
+          for (final item in _items)
+            NavigationDestination(
+              icon: Icon(item.icon),
+              selectedIcon: Icon(item.selectedIcon),
+              label: item.label,
             ),
-          ),
-          const NavigationDestination(
-            icon: Icon(Icons.more_horiz),
-            selectedIcon: Icon(Icons.more_horiz),
-            label: 'More',
-          ),
         ],
       ),
-    );
-  }
-
-  void _onPhoneDestinationSelected(int index) {
-    if (index < 4) {
-      setState(() {
-        _selectedIndex = _phoneDestinations[index];
-      });
-      return;
-    }
-
-    _showMoreMenu();
-  }
-
-  void _showMoreMenu() {
-    showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) {
-        return SafeArea(
-          child: ListView(
-            shrinkWrap: true,
-            children: [
-              const Padding(
-                padding: EdgeInsets.fromLTRB(24, 8, 24, 12),
-                child: Text(
-                  'More',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ),
-              for (final index in [4, 5, 6, 7, 8, 9, 10, 11])
-                ListTile(
-                  leading: Icon(
-                    _items[index].icon,
-                    color: KainPHTheme.primary,
-                  ),
-                  title: Text(_items[index].label),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () {
-                    Navigator.pop(context);
-                    setState(() {
-                      _selectedIndex = index;
-                    });
-                  },
-                ),
-            ],
-          ),
-        );
-      },
     );
   }
 
@@ -197,7 +93,7 @@ class _KainPHAppShellState extends State<KainPHAppShell> {
               children: [
                 _buildTopBar(),
                 Expanded(
-                  child: _buildContent(),
+                  child: _canvas(_buildContent()),
                 ),
               ],
             ),
@@ -214,16 +110,32 @@ class _KainPHAppShellState extends State<KainPHAppShell> {
           SizedBox(
             width: 88,
             child: NavigationRail(
+              backgroundColor: KainPHTheme.coffee,
+              indicatorColor: KainPHTheme.primary,
+              selectedIconTheme: const IconThemeData(color: Colors.white),
+              unselectedIconTheme: const IconThemeData(color: Color(0xFFF7EFE5)),
+              selectedLabelTextStyle: const TextStyle(color: KainPHTheme.primary, fontSize: 11),
+              unselectedLabelTextStyle: const TextStyle(color: Color(0xFFF7EFE5), fontSize: 11),
               selectedIndex: _selectedIndex,
               onDestinationSelected: _selectPage,
               extended: false,
+              scrollable: true,
               labelType: NavigationRailLabelType.all,
+              minWidth: 72,
+              leading: const Padding(
+                padding: EdgeInsets.symmetric(vertical: 12),
+                child: Icon(Icons.coffee, color: KainPHTheme.primary),
+              ),
               destinations: _items
                   .map(
                     (item) => NavigationRailDestination(
                       icon: Icon(item.icon),
                       selectedIcon: Icon(item.selectedIcon),
-                      label: Text(item.label),
+                      label: Text(
+                        item.label,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   )
                   .toList(),
@@ -234,7 +146,7 @@ class _KainPHAppShellState extends State<KainPHAppShell> {
               children: [
                 _buildTopBar(),
                 Expanded(
-                  child: _buildContent(),
+                  child: _canvas(_buildContent()),
                 ),
               ],
             ),
@@ -244,29 +156,53 @@ class _KainPHAppShellState extends State<KainPHAppShell> {
     );
   }
 
+  Widget _canvas(Widget child) {
+    return ColoredBox(
+      color: KainPHTheme.surface,
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: child,
+        ),
+      ),
+    );
+  }
+
   Widget _buildNavigationRail() {
     final isExtended = MediaQuery.sizeOf(context).width >= 1000;
 
     return NavigationRail(
+      backgroundColor: KainPHTheme.coffee,
       selectedIndex: _selectedIndex,
       onDestinationSelected: _selectPage,
       extended: isExtended,
+      scrollable: true,
+      minWidth: 80,
+      indicatorColor: KainPHTheme.primary,
+      selectedIconTheme: const IconThemeData(color: Colors.white),
+      unselectedIconTheme: const IconThemeData(color: Color(0xFFF7EFE5)),
+      selectedLabelTextStyle: const TextStyle(color: KainPHTheme.primary, fontSize: 12),
+      unselectedLabelTextStyle: const TextStyle(color: Color(0xFFF7EFE5), fontSize: 12),
       labelType: isExtended
           ? NavigationRailLabelType.none
           : NavigationRailLabelType.all,
-      leading: const Padding(
-        padding: EdgeInsets.symmetric(vertical: 20),
-        child: Text(
-          '🍴',
-          style: TextStyle(fontSize: 28),
-        ),
+      leading: Padding(
+        padding: const EdgeInsets.symmetric(vertical: 16),
+        child: isExtended
+            ? Image.asset(KainPHCatalog.wordmark, height: 36)
+            : const Icon(Icons.coffee, color: KainPHTheme.primary),
       ),
       destinations: _items
           .map(
             (item) => NavigationRailDestination(
               icon: Icon(item.icon),
               selectedIcon: Icon(item.selectedIcon),
-              label: Text(item.label),
+              label: Text(
+                item.label,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           )
           .toList(),
@@ -275,12 +211,9 @@ class _KainPHAppShellState extends State<KainPHAppShell> {
 
   PreferredSizeWidget _buildAppBar() {
     return AppBar(
-      title: const Text(
-        '🍴 KainPH',
-        style: TextStyle(
-          fontWeight: FontWeight.bold,
-        ),
-      ),
+      backgroundColor: KainPHTheme.coffee,
+      foregroundColor: Colors.white,
+      title: Image.asset(KainPHCatalog.wordmark, height: 32),
       actions: [
         _offlineBadge(),
         const SizedBox(width: 8),
@@ -302,34 +235,22 @@ class _KainPHAppShellState extends State<KainPHAppShell> {
           child: Container(
             height: height,
             padding: EdgeInsets.symmetric(horizontal: isCompact ? 12 : 24),
-            decoration: BoxDecoration(
-              color: Theme.of(context).scaffoldBackgroundColor,
-              border: const Border(
-                bottom: BorderSide(
-                  color: Color(0xFFE5E7EB),
-                ),
+            decoration: const BoxDecoration(
+              color: KainPHTheme.coffee,
+              border: Border(
+                bottom: BorderSide(color: Color(0x22FFFFFF)),
               ),
             ),
             child: Row(
               children: [
-                Flexible(
-                  child: Text(
-                    'KainPH POS',
-                    overflow: TextOverflow.ellipsis,
-                    maxLines: 1,
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          fontSize: isCompact ? 16 : 20,
-                          color: KainPHTheme.textPrimary,
-                        ),
-                  ),
-                ),
+                Image.asset(KainPHCatalog.wordmark, height: isCompact ? 28 : 34),
                 const SizedBox(width: 8),
                 _offlineBadge(),
                 const SizedBox(width: 12),
                 const CircleAvatar(
                   radius: 18,
-                  child: Icon(Icons.person_outline),
+                  backgroundColor: KainPHTheme.primary,
+                  child: Icon(Icons.person_outline, color: Colors.white, size: 18),
                 ),
               ],
             ),
@@ -346,7 +267,7 @@ class _KainPHAppShellState extends State<KainPHAppShell> {
         vertical: 6,
       ),
       decoration: BoxDecoration(
-        color: KainPHTheme.success.withValues(alpha: 0.1),
+        color: Colors.white.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(20),
       ),
       child: const Row(
@@ -355,13 +276,13 @@ class _KainPHAppShellState extends State<KainPHAppShell> {
           Icon(
             Icons.cloud_off,
             size: 16,
-            color: KainPHTheme.success,
+            color: Color(0xFFB7E4C7),
           ),
           SizedBox(width: 6),
           Text(
             'Offline',
             style: TextStyle(
-              color: KainPHTheme.success,
+              color: Color(0xFFB7E4C7),
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -387,20 +308,6 @@ class _KainPHAppShellState extends State<KainPHAppShell> {
       case 3:
         return const InventoryScreen();
       case 4:
-        return const CashierScreen();
-      case 5:
-        return const CustomersScreen();
-      case 6:
-        return const MarketingScreen();
-      case 7:
-        return const AnalyticsScreen();
-      case 8:
-        return const ReceiptsScreen();
-      case 9:
-        return const SecurityScreen();
-      case 10:
-        return const SystemScreen();
-      case 11:
         return const SettingsHomeScreen();
       default:
         return const DashboardScreen();

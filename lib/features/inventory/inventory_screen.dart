@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 
 import '../../core/theme/kainph_theme.dart';
+import '../../core/widgets/category_bar.dart';
+import '../../core/widgets/page_header.dart';
 import '../../core/widgets/responsive.dart';
+import '../../core/widgets/search_field.dart';
 import 'inventory_item_card.dart';
 import 'item_detail.dart';
 import 'mock_data.dart';
@@ -105,83 +108,23 @@ class _InventoryScreenState extends State<InventoryScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Inventory',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.bold,
-                  color: KainPHTheme.textPrimary,
-                ),
+              const KainPHPageHeader(
+                title: 'Inventory',
+                subtitle: 'Stock on hand and reorder levels.',
               ),
-              const SizedBox(height: 6),
-              const Text(
-                'Stock overview, purchasing and movement tracking.',
-                style: TextStyle(
-                  color: KainPHTheme.textSecondary,
-                  fontSize: 15,
-                ),
+              const SizedBox(height: 16),
+              KainPHSearchField(
+                hint: 'Search stock',
+                onChanged: (value) => setState(() => _search = value),
               ),
-              const SizedBox(height: 20),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final shouldWrap = constraints.maxWidth < 520;
-
-                  if (shouldWrap) {
-                    return Wrap(
-                      runSpacing: 12,
-                      spacing: 12,
-                      children: [
-                        SizedBox(
-                          width: constraints.maxWidth,
-                          child: TextField(
-                            decoration: const InputDecoration(
-                              prefixIcon: Icon(Icons.search),
-                              hintText: 'Search stock',
-                            ),
-                            onChanged: (value) => setState(() => _search = value),
-                          ),
-                        ),
-                        DropdownButton<String>(
-                          value: _category,
-                          items: inventoryCategories
-                              .map((category) => DropdownMenuItem(
-                                    value: category,
-                                    child: Text(category),
-                                  ))
-                              .toList(),
-                          onChanged: (value) =>
-                              setState(() => _category = value ?? 'All'),
-                        ),
-                      ],
-                    );
-                  }
-
-                  return Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          decoration: const InputDecoration(
-                            prefixIcon: Icon(Icons.search),
-                            hintText: 'Search stock',
-                          ),
-                          onChanged: (value) => setState(() => _search = value),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      DropdownButton<String>(
-                        value: _category,
-                        items: inventoryCategories
-                            .map((category) => DropdownMenuItem(
-                                  value: category,
-                                  child: Text(category),
-                                ))
-                            .toList(),
-                        onChanged: (value) =>
-                            setState(() => _category = value ?? 'All'),
-                      ),
-                    ],
-                  );
-                },
+              const SizedBox(height: 12),
+              KainPHCategoryBar(
+                categories: [
+                  'All',
+                  ...{for (final item in _items) item.category}.toList()..sort(),
+                ],
+                selected: _category,
+                onSelected: (value) => setState(() => _category = value),
               ),
               const SizedBox(height: 20),
               LayoutBuilder(
@@ -231,14 +174,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                 },
               ),
               const SizedBox(height: 24),
-              const Text(
-                'Low stock warnings',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: KainPHTheme.textPrimary,
-                ),
-              ),
+              const KainPHSectionTitle('Low stock'),
               const SizedBox(height: 12),
               if (lowStock.isEmpty)
                 const Card(child: ListTile(title: Text('No low-stock items')))
@@ -290,14 +226,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
                       .toList(),
                 ),
               const SizedBox(height: 24),
-              const Text(
-                'Stock list',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: KainPHTheme.textPrimary,
-                ),
-              ),
+              const KainPHSectionTitle('Stock list'),
               const SizedBox(height: 12),
               if (_filtered.isEmpty)
                               Card(

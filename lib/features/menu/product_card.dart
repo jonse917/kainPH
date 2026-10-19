@@ -19,6 +19,8 @@ class ProductCard extends StatelessWidget {
       imagePath: product.imagePath,
       featured: product.featured,
       available: product.available,
+      stock: product.stock,
+      reorderLevel: product.reorderLevel,
       onTap: () => showDialog<void>(
         context: context,
         builder: (_) => ProductDetail(product: product, onEdit: onEdit, onDelete: onDelete),

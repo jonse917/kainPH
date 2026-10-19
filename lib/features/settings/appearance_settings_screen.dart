@@ -189,29 +189,27 @@ class _AppearanceSettingsScreenState extends State<AppearanceSettingsScreen> {
             return Center(
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 1200),
-                child: Padding(
+                child: ListView(
                   padding: const EdgeInsets.all(20),
-                  child: wide
-                      ? Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Expanded(
-                              child: _buildSettingsPanel(),
-                            ),
-                            const SizedBox(width: 20),
-                            ConstrainedBox(
-                              constraints: const BoxConstraints(maxWidth: 360),
-                              child: _AppearancePreview(settings: _settings),
-                            ),
-                          ],
-                        )
-                      : Column(
-                          children: [
-                            _buildSettingsPanel(),
-                            const SizedBox(height: 20),
-                            _AppearancePreview(settings: _settings),
-                          ],
-                        ),
+                  children: [
+                    if (wide)
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(child: _buildSettingsPanel()),
+                          const SizedBox(width: 20),
+                          ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 360),
+                            child: _AppearancePreview(settings: _settings),
+                          ),
+                        ],
+                      )
+                    else ...[
+                      _buildSettingsPanel(),
+                      const SizedBox(height: 20),
+                      _AppearancePreview(settings: _settings),
+                    ],
+                  ],
                 ),
               ),
             );
@@ -222,9 +220,8 @@ class _AppearanceSettingsScreenState extends State<AppearanceSettingsScreen> {
   }
 
   Widget _buildSettingsPanel() {
-    return ListView(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         _SectionCard(
           title: 'Appearance',
@@ -349,65 +346,6 @@ class _AppearanceSettingsScreenState extends State<AppearanceSettingsScreen> {
                         onSelected: (_) async {
                           setState(() => _settings = _settings.copyWith(navigationMode: mode));
                           await AppearanceSettingsStore.save(_settings);
-                        },
-                      ),
-                    )
-                    .toList(),
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 16),
-        _SectionCard(
-          title: 'Dashboard',
-          children: [
-            _OptionRow(
-              title: 'Dashboard Layout',
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: KainPHDashboardLayout.values
-                    .map(
-                      (layout) => ChoiceChip(
-                        label: Text(_dashboardLayoutLabel(layout)),
-                        selected: _settings.dashboardLayout == layout,
-                        onSelected: (_) async {
-                          setState(() => _settings = _settings.copyWith(dashboardLayout: layout));
-                          await AppearanceSettingsStore.save(_settings);
-                        },
-                      ),
-                    )
-                    .toList(),
-              ),
-            ),
-            _OptionRow(
-              title: 'Dashboard Sections',
-              child: Wrap(
-                spacing: 8,
-                runSpacing: 8,
-                children: [
-                  'Sales Overview',
-                  'Quick Actions',
-                  'Low Stock',
-                  'Recent Orders',
-                  'Business Pulse',
-                  'Top Products',
-                  'Payment Summary',
-                ]
-                    .map(
-                      (section) => FilterChip(
-                        label: Text(section),
-                        selected: _settings.visibleSections.contains(section),
-                        onSelected: (_) async {
-                          final visible = Set<String>.from(_settings.visibleSections);
-                          if (visible.contains(section)) {
-                            visible.remove(section);
-                          } else {
-                            visible.add(section);
-                          }
-                          final updated = _settings.copyWith(visibleSections: visible);
-                          setState(() => _settings = updated);
-                          await AppearanceSettingsStore.save(updated);
                         },
                       ),
                     )
@@ -592,18 +530,6 @@ class _AppearanceSettingsScreenState extends State<AppearanceSettingsScreen> {
     }
   }
 
-  String _dashboardLayoutLabel(KainPHDashboardLayout layout) {
-    switch (layout) {
-      case KainPHDashboardLayout.standard:
-        return 'Standard';
-      case KainPHDashboardLayout.salesFocus:
-        return 'Sales Focus';
-      case KainPHDashboardLayout.operations:
-        return 'Operations';
-      case KainPHDashboardLayout.minimal:
-        return 'Minimal';
-    }
-  }
 }
 
 class _SectionCard extends StatelessWidget {

@@ -6,7 +6,7 @@ void main() {
   testWidgets('KainPH app loads', (WidgetTester tester) async {
     await tester.pumpWidget(const KainPHApp());
 
-    expect(find.text('KainPH'), findsOneWidget);
-    expect(find.text('Good evening! 👋'), findsOneWidget);
+    expect(find.text('Running'), findsOneWidget);
+    expect(find.byType(DecoratedBox), findsWidgets);
   });
 }

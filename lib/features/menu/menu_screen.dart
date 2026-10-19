@@ -3,8 +3,13 @@ import 'mock_data.dart';
 import 'product_card.dart';
 import 'product_form.dart';
 
-import '../../core/widgets/responsive.dart';
+import '../../core/theme/kainph_theme.dart';
+import '../../core/widgets/category_bar.dart';
+import '../../core/widgets/page_header.dart';
+import '../../core/widgets/product_grid.dart';
+import '../../core/widgets/search_field.dart';
 import '../../core/database/app_database.dart';
+import '../../core/database/pos_repository.dart';
 import '../../core/services/kainph_database.dart';
 import '../../core/services/product_image_store.dart';
 import 'package:drift/drift.dart' as drift;
@@ -21,13 +26,13 @@ class _MenuScreenState extends State<MenuScreen> {
   String _search = '';
   String _selectedCategory = 'All';
   final _searchController = TextEditingController();
-  late final Stream<List<Product>> _productsStream;
+  late final Stream<List<ProductOffer>> _productsStream;
   late final Stream<List<Category>> _categoriesStream;
   Map<String, String> _imagePaths = const {};
   @override
   void initState() {
     super.initState();
-    _productsStream = KainPHDatabase.instance.pos.watchProducts();
+    _productsStream = KainPHDatabase.instance.pos.watchOffers();
     _categoriesStream = KainPHDatabase.instance.pos.watchCategories();
     _loadImages();
     if (widget.openAddProduct) {
@@ -79,7 +84,7 @@ class _MenuScreenState extends State<MenuScreen> {
         price: product.price,
         featured: drift.Value(product.featured), isAvailable: drift.Value(product.available),
         createdAt: now, updatedAt: now,
-      ));
+      ), openingStock: product.stock);
       await ProductImageStore.instance.set(product.id, product.imagePath);
       final imagePaths = await ProductImageStore.instance.load();
       if (!mounted) return;
@@ -125,33 +130,37 @@ class _MenuScreenState extends State<MenuScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final width = MediaQuery.sizeOf(context).width;
-    final isWide = width >= 900;
-
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Menu'),
-        actions: [
-          IconButton(
-            onPressed: () => _openAddProduct(_currentCategories),
-            icon: const Icon(Icons.add),
-            tooltip: 'Add product',
-          ),
-          IconButton(onPressed: _openCategories, icon: const Icon(Icons.category_outlined), tooltip: 'Manage categories'),
-        ],
-      ),
       body: Padding(
-        padding: const EdgeInsets.all(12.0),
+        padding: const EdgeInsets.all(16),
         child: Column(
           children: [
-            Expanded(child: StreamBuilder<List<Product>>(
+            KainPHPageHeader(
+              title: 'Menu',
+              subtitle: 'Products available at the register.',
+              actions: [
+                IconButton(
+                  onPressed: _openCategories,
+                  icon: const Icon(Icons.category_outlined),
+                  tooltip: 'Categories',
+                ),
+                FilledButton.icon(
+                  onPressed: () => _openAddProduct(_currentCategories),
+                  icon: const Icon(Icons.add),
+                  label: const Text('Add product'),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Expanded(child: StreamBuilder<List<ProductOffer>>(
               stream: _productsStream,
               builder: (context, snapshot) {
                   if (snapshot.hasError) return const Center(child: Text('Unable to load products.'));
                   if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
-                  final products = snapshot.data!.map((row) => MenuProduct(
-                    id: row.id, name: row.name, category: row.categoryId ?? 'Meals', price: row.price,
-                    featured: row.featured, available: row.isAvailable, description: row.description, imagePath: _imagePaths[row.id],
+                  final products = snapshot.data!.map((offer) => MenuProduct(
+                    id: offer.product.id, name: offer.product.name, category: offer.product.categoryId ?? 'Meals', price: offer.product.price,
+                    featured: offer.product.featured, available: offer.product.isAvailable, description: offer.product.description, imagePath: _imagePaths[offer.product.id],
+                    stock: offer.stock, reorderLevel: offer.reorderLevel,
                   )).toList();
                   return StreamBuilder<List<Category>>(
                     stream: _categoriesStream,
@@ -161,8 +170,19 @@ class _MenuScreenState extends State<MenuScreen> {
                       _currentCategories = categories;
                       if (!categories.contains(_selectedCategory)) _selectedCategory = 'All';
                       return Column(children: [
-                        _buildControls(isWide, categories), const SizedBox(height: 12),
-                        Expanded(child: _buildContent(isWide, products, categories)),
+                        KainPHSearchField(
+                          controller: _searchController,
+                          hint: 'Search products',
+                          onChanged: (value) => setState(() => _search = value),
+                        ),
+                        const SizedBox(height: 12),
+                        KainPHCategoryBar(
+                          categories: ['All', ...categories],
+                          selected: _selectedCategory,
+                          onSelected: (value) => setState(() => _selectedCategory = value),
+                        ),
+                        const SizedBox(height: 12),
+                        Expanded(child: _buildContent(products, categories)),
                       ]);
                     },
                   );
@@ -171,108 +191,38 @@ class _MenuScreenState extends State<MenuScreen> {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => _openAddProduct(_currentCategories),
-        label: const Text('Add Product'),
-        icon: const Icon(Icons.add),
-      ),
-    );
-  }
-
-  Widget _buildControls(bool isWide, List<String> categories) {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final shouldWrap = constraints.maxWidth < 520;
-
-        if (shouldWrap) {
-          return Wrap(
-            runSpacing: 12,
-            spacing: 12,
-            children: [
-              ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: constraints.maxWidth),
-                child: SizedBox(
-                  width: constraints.maxWidth,
-                  child: TextField(
-                    controller: _searchController,
-                    decoration: const InputDecoration(
-                      prefixIcon: Icon(Icons.search),
-                      hintText: 'Search products',
-                    ),
-                    onChanged: (v) => setState(() => _search = v),
-                  ),
-                ),
-              ),
-              DropdownButton<String>(
-                value: _selectedCategory,
-                items: ['All', ...categories]
-                    .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                    .toList(),
-                onChanged: (v) => setState(() => _selectedCategory = v ?? 'All'),
-              ),
-            ],
-          );
-        }
-
-        return Row(
-          children: [
-            Expanded(
-              child: TextField(
-                controller: _searchController,
-                decoration: const InputDecoration(
-                  prefixIcon: Icon(Icons.search),
-                  hintText: 'Search products',
-                ),
-                onChanged: (v) => setState(() => _search = v),
-              ),
-            ),
-            const SizedBox(width: 12),
-            DropdownButton<String>(
-              value: _selectedCategory,
-              items: ['All', ...categories]
-                  .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-                  .toList(),
-              onChanged: (v) => setState(() => _selectedCategory = v ?? 'All'),
-            ),
-          ],
-        );
-      },
     );
   }
 
   List<String> _currentCategories = const [];
 
-  Widget _buildContent(bool isWide, List<MenuProduct> products, List<String> categories) {
+  Widget _buildContent(List<MenuProduct> products, List<String> categories) {
     final items = _filtered(products);
 
     if (items.isEmpty) {
-      return Center(
+      return const Center(
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(Icons.menu_book_outlined, size: 64, color: Colors.grey.shade400),
-            const SizedBox(height: 12),
-            const Text('No products found', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-            const SizedBox(height: 6),
-            const Text('Use the Add Product button to create menu items.'),
+            Icon(Icons.restaurant_menu, size: 48, color: KainPHTheme.sand),
+            SizedBox(height: 12),
+            Text('No products found', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: KainPHTheme.textPrimary)),
+            SizedBox(height: 6),
+            Text('Add a product to show it here and on the register.', style: TextStyle(color: KainPHTheme.textSecondary)),
           ],
         ),
       );
     }
 
-    if (isWide) {
-      // Use ResponsiveGrid instead of fixed crossAxisCount grid so columns adapt to available width.
-      return ResponsiveGrid(
-        children: items.map((p) => ProductCard(product: p, onEdit: () => _openEditProduct(p, categories), onDelete: () => _deleteProduct(p))).toList(),
-      );
-    }
-
-    return ListView.separated(
+    return KainPHProductGrid(
       itemCount: items.length,
-      separatorBuilder: (_, __) => const SizedBox(height: 8),
-      itemBuilder: (_, i) {
-        final p = items[i];
-        return ProductCard(product: p, onEdit: () => _openEditProduct(p, categories), onDelete: () => _deleteProduct(p));
+      itemBuilder: (_, index) {
+        final product = items[index];
+        return ProductCard(
+          product: product,
+          onEdit: () => _openEditProduct(product, categories),
+          onDelete: () => _deleteProduct(product),
+        );
       },
     );
   }

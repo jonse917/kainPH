@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'core/services/appearance_settings_store.dart';
 import 'core/services/kainph_database.dart';
 import 'core/theme/kainph_theme.dart';
-import 'core/widgets/app_shell.dart';
+import 'features/splash/splash_screen.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -33,7 +33,7 @@ class KainPHApp extends StatelessWidget {
             KainPHThemeMode.dark => ThemeMode.dark,
             KainPHThemeMode.system => ThemeMode.system,
           },
-          home: const KainPHAppShell(),
+          home: const SplashScreen(),
         );
       },
     );

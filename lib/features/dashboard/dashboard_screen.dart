@@ -3,6 +3,7 @@ import '../../core/database/app_database.dart';
 import '../../core/database/pos_repository.dart';
 import '../../core/services/kainph_database.dart';
 import '../../core/theme/kainph_theme.dart';
+import '../../core/widgets/page_header.dart';
 import '../../core/widgets/responsive.dart';
 
 class DashboardScreen extends StatelessWidget {
@@ -17,28 +18,83 @@ class DashboardScreen extends StatelessWidget {
       if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
       final d = snapshot.data!;
       return SingleChildScrollView(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('Business overview', style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: KainPHTheme.textPrimary)),
-        const SizedBox(height: 6), Text(d.ordersToday == 0 ? 'No sales yet today' : '${d.ordersToday} order${d.ordersToday == 1 ? '' : 's'} recorded today.', style: const TextStyle(color: KainPHTheme.textSecondary)), const SizedBox(height: 20),
+        KainPHPageHeader(title: 'Dashboard', subtitle: d.ordersToday == 0 ? 'No sales yet today' : '${d.ordersToday} order${d.ordersToday == 1 ? '' : 's'} recorded today.'), const SizedBox(height: 20),
         ResponsiveGrid(children: [
           _Card('Today\'s Sales', _money(d.todaySales), '${d.ordersToday} Orders', Icons.payments_outlined, KainPHTheme.primary),
           _Card('Items Sold', '${d.itemsSoldToday}', d.itemsSoldToday == 0 ? 'No items sold yet' : 'Items sold today', Icons.shopping_bag_outlined, KainPHTheme.success),
           _Card('Inventory', '${d.inventoryUnits} units', '${d.lowStock} low · ${d.outOfStock} out', Icons.inventory_2_outlined, KainPHTheme.warning),
           _Card('Out of Stock', '${d.outOfStock}', d.outOfStock == 0 ? 'All tracked items available' : 'Action needed', Icons.warning_amber_rounded, KainPHTheme.danger),
-        ]), const SizedBox(height: 24), const _Heading('Quick Actions'), const SizedBox(height: 10),
+        ]), const SizedBox(height: 24), const KainPHSectionTitle('Quick actions'), const SizedBox(height: 10),
         _Action(Icons.shopping_cart_outlined, 'New Sale', () => onNavigate?.call(1)),
         _Action(Icons.add_box_outlined, 'Add Product', onAddProduct),
         _Action(Icons.inventory_2_outlined, 'Inventory', () => onNavigate?.call(3)),
-        _Action(Icons.bar_chart_outlined, 'Sales & Reports', () => onNavigate?.call(7)),
-        const SizedBox(height: 24), const _Heading('Sales Trend'), const SizedBox(height: 10), _Trend(d.hourlySales),
-        const SizedBox(height: 24), const _Heading('Recent Transactions'), const SizedBox(height: 10), _Recent(sales: d.recentSales),
+        const SizedBox(height: 24), const KainPHSectionTitle('Sales trend'), const SizedBox(height: 10), _Trend(d.hourlySales),
+        const SizedBox(height: 24), const KainPHSectionTitle('Recent transactions'), const SizedBox(height: 10), _Recent(sales: d.recentSales),
       ]));
     },
   ));
 }
 String _money(double value) => '₱${value.toStringAsFixed(2)}';
-class _Heading extends StatelessWidget { const _Heading(this.value); final String value; @override Widget build(BuildContext c) => Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: KainPHTheme.textPrimary)); }
-class _Card extends StatelessWidget { const _Card(this.title,this.value,this.detail,this.icon,this.color); final String title,value,detail; final IconData icon; final Color color; @override Widget build(BuildContext c) => Card(child: Padding(padding: const EdgeInsets.all(16), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Icon(icon,color:color),const SizedBox(height:12),Text(title,style:const TextStyle(color:KainPHTheme.textSecondary,fontSize:12)),Text(value,style:const TextStyle(fontSize:21,fontWeight:FontWeight.bold)),const SizedBox(height:4),Text(detail,style:const TextStyle(color:KainPHTheme.textSecondary,fontSize:11))]))); }
-class _Action extends StatelessWidget { const _Action(this.icon,this.title,this.onTap); final IconData icon; final String title; final VoidCallback? onTap; @override Widget build(BuildContext c) => Card(child: ListTile(onTap:onTap,leading:CircleAvatar(backgroundColor:KainPHTheme.primary.withValues(alpha:.1),child:Icon(icon,color:KainPHTheme.primary)),title:Text(title),trailing:const Icon(Icons.chevron_right))); }
+class _Card extends StatelessWidget {
+  const _Card(this.title, this.value, this.detail, this.icon, this.color);
+  final String title, value, detail;
+  final IconData icon;
+  final Color color;
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Icon(icon, color: color, size: 18),
+            ),
+            const SizedBox(height: 16),
+            Text(title, style: const TextStyle(color: KainPHTheme.textSecondary, fontSize: 12, letterSpacing: 0.5, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 4),
+            Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w600, letterSpacing: -0.3, color: KainPHTheme.textPrimary)),
+            const SizedBox(height: 6),
+            Text(detail, style: const TextStyle(color: KainPHTheme.textSecondary, fontSize: 12)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+class _Action extends StatelessWidget {
+  const _Action(this.icon, this.title, this.onTap);
+  final IconData icon;
+  final String title;
+  final VoidCallback? onTap;
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
+      child: Card(
+        child: ListTile(
+          onTap: onTap,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+          leading: Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(color: KainPHTheme.surface, borderRadius: BorderRadius.circular(10)),
+            child: Icon(icon, color: KainPHTheme.coffee, size: 18),
+          ),
+          title: Text(title, style: const TextStyle(fontWeight: FontWeight.w600)),
+          trailing: const Icon(Icons.arrow_forward, size: 18, color: KainPHTheme.textSecondary),
+        ),
+      ),
+    );
+  }
+}
 class _Trend extends StatelessWidget {
   const _Trend(this.values);
   final List<double> values;
@@ -57,7 +113,7 @@ class _Trend extends StatelessWidget {
           child: Column(mainAxisAlignment: MainAxisAlignment.end, children: [
             Expanded(child: Align(alignment: Alignment.bottomCenter, child: Container(
               height: 120 * values[index] / max,
-              decoration: const BoxDecoration(color: KainPHTheme.primary, borderRadius: BorderRadius.vertical(top: Radius.circular(8))),
+              decoration: BoxDecoration(color: KainPHTheme.primary.withValues(alpha: 0.9), borderRadius: const BorderRadius.vertical(top: Radius.circular(10))),
             ))),
             Text('${index * 3}:00', style: const TextStyle(fontSize: 10, color: KainPHTheme.textSecondary)),
           ]),

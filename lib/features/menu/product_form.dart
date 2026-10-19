@@ -16,6 +16,7 @@ class ProductForm extends StatefulWidget {
 class _ProductFormState extends State<ProductForm> {
   late final TextEditingController _nameController;
   late final TextEditingController _priceController;
+  late final TextEditingController _stockController;
   late String _category;
   String? _imagePath;
   bool _featured = false;
@@ -26,6 +27,7 @@ class _ProductFormState extends State<ProductForm> {
     super.initState();
     _nameController = TextEditingController(text: widget.product?.name ?? '');
     _priceController = TextEditingController(text: widget.product?.price.toString() ?? '');
+    _stockController = TextEditingController(text: widget.product == null ? '0' : '${widget.product!.stock}');
     _category = widget.product?.category ?? widget.categories.first;
     _featured = widget.product?.featured ?? false;
     _available = widget.product?.available ?? true;
@@ -36,6 +38,7 @@ class _ProductFormState extends State<ProductForm> {
   void dispose() {
     _nameController.dispose();
     _priceController.dispose();
+    _stockController.dispose();
     super.dispose();
   }
 
@@ -81,6 +84,17 @@ class _ProductFormState extends State<ProductForm> {
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 decoration: const InputDecoration(labelText: 'Price'),
               ),
+              if (widget.product == null) ...[
+                const SizedBox(height: 8),
+                TextField(
+                  controller: _stockController,
+                  keyboardType: TextInputType.number,
+                  decoration: const InputDecoration(
+                    labelText: 'Opening stock',
+                    helperText: '0 means the item is out of stock',
+                  ),
+                ),
+              ],
               const SizedBox(height: 8),
               DropdownButtonFormField<String>(
                 initialValue: _category,
@@ -112,7 +126,8 @@ class _ProductFormState extends State<ProductForm> {
                     onPressed: () {
                       final name = _nameController.text.trim();
                       final price = double.tryParse(_priceController.text);
-                      if (name.isEmpty || price == null || price < 0) return;
+                      final stock = int.tryParse(_stockController.text) ?? 0;
+                      if (name.isEmpty || price == null || price < 0 || stock < 0) return;
                       Navigator.of(context).pop(MenuProduct(
                         id: widget.product?.id ?? DateTime.now().microsecondsSinceEpoch.toString(),
                         name: name,
@@ -120,6 +135,7 @@ class _ProductFormState extends State<ProductForm> {
                         category: _category,
                         featured: _featured,
                         available: _available,
+                        stock: widget.product == null ? stock : widget.product!.stock,
                         variants: widget.product?.variants ?? const [],
                         modifiers: widget.product?.modifiers ?? const [],
                         description: widget.product?.description ?? '',

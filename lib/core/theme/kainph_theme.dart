@@ -36,16 +36,20 @@ class KainPHTypography {
 class KainPHTheme {
   KainPHTheme._();
 
-  static const Color primary = Color(0xFFE85D04);
-  static const Color background = Color(0xFFF8F7F4);
-  static const Color surface = Colors.white;
+  static const Color primary = Color(0xFFF56B0B);
+  static const Color primaryPressed = Color(0xFFDE5900);
+  static const Color background = Color(0xFFFFF9F1);
+  static const Color surface = Color(0xFFF7EFE5);
+  static const Color coffee = Color(0xFF382116);
+  static const Color coffeeRaised = Color(0xFF4A2D1E);
+  static const Color sand = Color(0xFFE8DCCE);
 
-  static const Color textPrimary = Color(0xFF1F2937);
-  static const Color textSecondary = Color(0xFF6B7280);
+  static const Color textPrimary = Color(0xFF241B16);
+  static const Color textSecondary = Color(0xFF75685D);
 
-  static const Color success = Color(0xFF16A34A);
-  static const Color warning = Color(0xFFD97706);
-  static const Color danger = Color(0xFFDC2626);
+  static const Color success = Color(0xFF2E9D57);
+  static const Color warning = Color(0xFFE7A12C);
+  static const Color danger = Color(0xFFC53B32);
 
   static const double radiusSmall = 8;
   static const double radiusMedium = 12;
@@ -61,6 +65,10 @@ class KainPHTheme {
     final colorScheme = ColorScheme.fromSeed(
       seedColor: appearance.accentColor,
       brightness: Brightness.light,
+      primary: appearance.accentColor,
+      onPrimary: Colors.white,
+      surface: Colors.white,
+      onSurface: textPrimary,
     );
 
     return ThemeData(
@@ -82,16 +90,73 @@ class KainPHTheme {
         elevation: 0,
         centerTitle: false,
       ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: Colors.white,
+        hintStyle: const TextStyle(color: textSecondary),
+        prefixIconColor: textSecondary,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 14),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(radiusMedium),
+          borderSide: const BorderSide(color: sand),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(radiusMedium),
+          borderSide: const BorderSide(color: sand),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(radiusMedium),
+          borderSide: BorderSide(color: appearance.accentColor, width: 1.5),
+        ),
+      ),
+      dividerTheme: const DividerThemeData(color: sand, thickness: 1, space: 1),
+      dialogTheme: DialogThemeData(
+        backgroundColor: Colors.white,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+      ),
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        indicatorColor: appearance.accentColor.withValues(alpha: 0.16),
+        labelTextStyle: WidgetStateProperty.resolveWith((states) {
+          final selected = states.contains(WidgetState.selected);
+          return TextStyle(
+            fontSize: 12,
+            letterSpacing: 0.2,
+            fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+            color: selected ? coffee : textSecondary,
+          );
+        }),
+      ),
       cardTheme: CardThemeData(
         elevation: 0,
+        color: Colors.white,
+        surfaceTintColor: Colors.transparent,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(radiusMedium),
+          borderRadius: BorderRadius.circular(18),
+          side: BorderSide(color: sand.withValues(alpha: 0.85)),
         ),
         margin: EdgeInsets.zero,
       ),
       chipTheme: ChipThemeData(
+        selectedColor: appearance.accentColor,
+        backgroundColor: Colors.white,
+        side: BorderSide(color: sand.withValues(alpha: 0.9)),
+        labelStyle: const TextStyle(color: textPrimary, fontWeight: FontWeight.w500, letterSpacing: 0.15),
+        secondaryLabelStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, letterSpacing: 0.15),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(radiusMedium),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 8),
+      ),
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: appearance.accentColor,
+          foregroundColor: Colors.white,
+          minimumSize: const Size(44, 48),
+          textStyle: const TextStyle(fontWeight: FontWeight.w600, letterSpacing: 0.2),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
         ),
       ),
     );

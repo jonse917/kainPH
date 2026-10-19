@@ -34,11 +34,8 @@ class ResponsiveGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(builder: (context, constraints) {
       final width = constraints.maxWidth;
-      // Decide columns based on width
       int columns;
-      if (width < 480) {
-        columns = minColumns; // mostly single or two columns on narrow phones
-      } else if (width < 800) {
+      if (width < 800) {
         columns = minColumns;
       } else if (width < 1100) {
         columns = (minColumns + 1).clamp(minColumns, maxColumns);
@@ -46,31 +43,17 @@ class ResponsiveGrid extends StatelessWidget {
         columns = maxColumns;
       }
 
-      // Leave enough vertical room for card content. The previous, wider ratios
-      // made summary and product cards too short on phones, which could cause a
-      // RenderFlex overflow when text wrapped or the user increased text size.
-      double childAspectRatio;
-      if (width < 480) {
-        childAspectRatio = 1.15;
-      } else if (width < 800) {
-        childAspectRatio = 1.25;
-      } else if (width < 1100) {
-        childAspectRatio = 1.4;
-      } else {
-        childAspectRatio = 1.5;
-      }
+      // Size tiles by their content. A fixed aspect ratio made summary cards
+      // shorter than their text and painted yellow overflow stripes.
+      final itemWidth = (width - spacing * (columns - 1)) / columns;
 
-      return GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: children.length,
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: columns,
-          crossAxisSpacing: spacing,
-          mainAxisSpacing: spacing,
-          childAspectRatio: childAspectRatio,
-        ),
-        itemBuilder: (context, index) => children[index],
+      return Wrap(
+        spacing: spacing,
+        runSpacing: spacing,
+        children: [
+          for (final child in children)
+            SizedBox(width: itemWidth, child: child),
+        ],
       );
     });
   }

@@ -40,6 +40,14 @@ class ProductDetail extends StatelessWidget {
             const SizedBox(height: 8),
             Text('Available: ${product.available ? 'Yes' : 'No'}'),
             const SizedBox(height: 8),
+            Text(
+              product.stock <= 0
+                  ? 'Stock: Out of stock'
+                  : product.reorderLevel > 0 && product.stock <= product.reorderLevel
+                      ? 'Stock: ${product.stock} left · low'
+                      : 'Stock: ${product.stock}',
+            ),
+            const SizedBox(height: 8),
             if (product.variants.isNotEmpty) ...[
               const Text('Variants', style: TextStyle(fontWeight: FontWeight.w600)),
               const SizedBox(height: 6),

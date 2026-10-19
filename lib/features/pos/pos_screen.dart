@@ -5,7 +5,10 @@ import 'package:flutter/material.dart';
 import '../../core/services/tax_settings_store.dart';
 import '../../core/theme/kainph_theme.dart';
 import '../../core/services/kainph_database.dart';
+import '../../core/widgets/category_bar.dart';
 import '../../core/widgets/product_card.dart';
+import '../../core/widgets/product_grid.dart';
+import '../../core/widgets/search_field.dart';
 import '../../core/widgets/cart_item.dart';
 import '../../core/widgets/summary_row.dart';
 
@@ -31,17 +34,30 @@ class _PosScreenState extends State<PosScreen> {
   @override
   void initState() {
     super.initState();
-    _productsSubscription = KainPHDatabase.instance.pos.watchAvailableProducts().listen((products) {
+    _productsSubscription = KainPHDatabase.instance.pos.watchOffers().listen((offers) {
       if (!mounted) return;
       setState(() {
-        _products = products.map((product) => _Product(
-          id: product.id,
-          name: product.name,
-          category: product.categoryId ?? 'Uncategorized',
-          price: product.price,
-          icon: _iconForCategory(product.categoryId),
+        _products = offers.map((offer) => _Product(
+          id: offer.product.id,
+          name: offer.product.name,
+          category: offer.product.categoryId ?? 'Uncategorized',
+          price: offer.product.price,
+          icon: _iconForCategory(offer.product.categoryId),
+          available: offer.product.isAvailable,
+          stock: offer.stock,
+          reorderLevel: offer.reorderLevel,
         )).toList();
-        _cart.removeWhere((id, _) => !_products.any((product) => product.id == id));
+        final nextCart = <String, int>{};
+        for (final entry in _cart.entries) {
+          final match = _products.where((product) => product.id == entry.key);
+          if (match.isEmpty) continue;
+          final product = match.first;
+          if (!product.available || product.stock <= 0) continue;
+          nextCart[entry.key] = entry.value > product.stock ? product.stock : entry.value;
+        }
+        _cart
+          ..clear()
+          ..addAll(nextCart);
       });
     });
   }
@@ -149,11 +165,15 @@ class _PosScreenState extends State<PosScreen> {
                   ),
                 ),
               ),
-              Text(
-                _formatCurrency(_subtotal),
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
+              Flexible(
+                child: Text(
+                  _formatCurrency(_subtotal),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -209,7 +229,7 @@ class _PosScreenState extends State<PosScreen> {
   Widget _buildHeader() {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final compactHeader = constraints.maxWidth < 900;
+        final compactHeader = constraints.maxWidth < 1100;
 
         if (compactHeader) {
           final veryCompact = MediaQuery.sizeOf(context).height < 500;
@@ -221,7 +241,7 @@ class _PosScreenState extends State<PosScreen> {
             decoration: const BoxDecoration(
               border: Border(
                 bottom: BorderSide(
-                  color: Color(0xFFE5E7EB),
+                  color: KainPHTheme.sand,
                 ),
               ),
             ),
@@ -238,8 +258,9 @@ class _PosScreenState extends State<PosScreen> {
                     Text(
                       'New Sale',
                       style: TextStyle(
-                        fontSize: veryCompact ? 16 : 20,
-                        fontWeight: FontWeight.bold,
+                        fontSize: veryCompact ? 16 : 22,
+                        letterSpacing: -0.3,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                     const Spacer(),
@@ -323,19 +344,8 @@ class _PosScreenState extends State<PosScreen> {
                 // the regular phone layout.
                 if (!veryCompact) ...[
                   const SizedBox(height: 12),
-                  TextField(
-                    decoration: InputDecoration(
-                      hintText: 'Search products',
-                      prefixIcon: const Icon(Icons.search),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide.none,
-                      ),
-                      fillColor: Theme.of(context).cardColor,
-                      filled: true,
-                      contentPadding:
-                          const EdgeInsets.symmetric(horizontal: 12),
-                    ),
+                  KainPHSearchField(
+                    hint: 'Search products',
                     onChanged: (v) => setState(() => _searchQuery = v),
                   ),
                   const SizedBox(height: 12),
@@ -354,7 +364,7 @@ class _PosScreenState extends State<PosScreen> {
           decoration: const BoxDecoration(
             border: Border(
               bottom: BorderSide(
-                color: Color(0xFFE5E7EB),
+                color: KainPHTheme.sand,
               ),
             ),
           ),
@@ -368,25 +378,15 @@ class _PosScreenState extends State<PosScreen> {
               const Text(
                 'New Sale',
                 style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
+                  fontSize: 22,
+                  letterSpacing: -0.3,
+                  fontWeight: FontWeight.w600,
                 ),
               ),
               const SizedBox(width: 16),
               Expanded(
-                child: TextField(
-                  decoration: InputDecoration(
-                    hintText: 'Search products',
-                    prefixIcon: const Icon(Icons.search),
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(8),
-                      borderSide: BorderSide.none,
-                    ),
-                    fillColor: Theme.of(context).cardColor,
-                    filled: true,
-                    contentPadding:
-                        const EdgeInsets.symmetric(vertical: 0, horizontal: 12),
-                  ),
+                child: KainPHSearchField(
+                  hint: 'Search products',
                   onChanged: (v) => setState(() => _searchQuery = v),
                 ),
               ),
@@ -492,41 +492,13 @@ class _PosScreenState extends State<PosScreen> {
   // ============================================================
 
   Widget _buildCategoryBar() {
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final isCompact =
-            constraints.maxWidth < 600 || constraints.maxHeight < 200;
-        final height = isCompact ? 48.0 : 64.0;
-
-        return SizedBox(
-          height: height,
-          child: ListView.separated(
-            padding: EdgeInsets.symmetric(
-              horizontal: isCompact ? 12 : 16,
-              vertical: isCompact ? 8 : 12,
-            ),
-            scrollDirection: Axis.horizontal,
-            itemCount: _categories.length,
-            separatorBuilder: (context, index) {
-              return const SizedBox(width: 8);
-            },
-            itemBuilder: (context, index) {
-              final category = _categories[index];
-              final selected = category == _selectedCategory;
-
-              return ChoiceChip(
-                label: Text(category),
-                selected: selected,
-                onSelected: (_) {
-                  setState(() {
-                    _selectedCategory = category;
-                  });
-                },
-              );
-            },
-          ),
-        );
-      },
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: KainPHCategoryBar(
+        categories: _categories,
+        selected: _selectedCategory,
+        onSelected: (category) => setState(() => _selectedCategory = category),
+      ),
     );
   }
 
@@ -537,23 +509,8 @@ class _PosScreenState extends State<PosScreen> {
   Widget _buildProductGrid() {
     final products = _filteredProducts;
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final width = constraints.maxWidth;
-        // Determine max cross axis extent so more columns appear on larger screens.
-        final maxExtent =
-            width < 400 ? width / 2 : (width < 800 ? 220.0 : 240.0);
-        // Use childAspectRatio to allow height to flow naturally and avoid fixed heights.
-        final childAspect = (width < 400) ? 0.95 : (width < 800 ? 1.0 : 1.05);
-
-        return GridView.builder(
+    return KainPHProductGrid(
           padding: const EdgeInsets.all(16),
-          gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-            maxCrossAxisExtent: maxExtent,
-            childAspectRatio: childAspect,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-          ),
           itemCount: products.length,
           itemBuilder: (context, index) {
             final product = products[index];
@@ -562,11 +519,12 @@ class _PosScreenState extends State<PosScreen> {
               title: product.name,
               price: product.price,
               icon: product.icon,
+              available: product.available,
+              stock: product.stock,
+              reorderLevel: product.reorderLevel,
               onTap: () => _addToCart(product),
             );
           },
-        );
-      },
     );
   }
 
@@ -575,9 +533,7 @@ class _PosScreenState extends State<PosScreen> {
   // ============================================================
 
   Widget _buildCartPanel() {
-    return Column(
-      children: [
-        Padding(
+    final header = Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -585,10 +541,12 @@ class _PosScreenState extends State<PosScreen> {
               Row(
                 children: [
                   const Text(
-                    'Current Order',
+                    'Current order',
                     style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                      letterSpacing: -0.2,
+                      fontWeight: FontWeight.w600,
+                      color: KainPHTheme.textPrimary,
                     ),
                   ),
                   const Spacer(),
@@ -600,7 +558,9 @@ class _PosScreenState extends State<PosScreen> {
                 ],
               ),
               const SizedBox(height: 6),
-              Row(
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
                 children: [
                   Container(
                     padding:
@@ -610,6 +570,7 @@ class _PosScreenState extends State<PosScreen> {
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         const Icon(Icons.restaurant_outlined, size: 16),
                         const SizedBox(width: 8),
@@ -617,107 +578,87 @@ class _PosScreenState extends State<PosScreen> {
                       ],
                     ),
                   ),
-                  const SizedBox(width: 8),
                   if (_customerName != null)
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).cardColor,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.person, size: 16),
-                          const SizedBox(width: 8),
-                          Text(_customerName!),
-                        ],
-                      ),
-                    ),
-                  if (_tableNumber != null) ...[
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).cardColor,
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.table_chart, size: 16),
-                          const SizedBox(width: 8),
-                          Text(_tableNumber!),
-                        ],
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 180),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).cardColor,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.person, size: 16),
+                            const SizedBox(width: 8),
+                            Flexible(child: Text(_customerName!, overflow: TextOverflow.ellipsis)),
+                          ],
+                        ),
                       ),
                     ),
-                  ],
+                  if (_tableNumber != null)
+                    ConstrainedBox(
+                      constraints: const BoxConstraints(maxWidth: 180),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Theme.of(context).cardColor,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.table_chart, size: 16),
+                            const SizedBox(width: 8),
+                            Flexible(child: Text(_tableNumber!, overflow: TextOverflow.ellipsis)),
+                          ],
+                        ),
+                      ),
+                    ),
                 ],
               ),
             ],
           ),
-        ),
-        const Divider(height: 1),
+        );
+    return Column(
+      children: [
         Expanded(
-          child: _cart.isEmpty ? _buildEmptyCart() : _buildCartItems(),
+          child: _cart.isEmpty
+              ? ListView(
+                  children: [
+                    header,
+                    const _EmptyCartMessage(),
+                  ],
+                )
+              : ListView(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  children: [
+                    header,
+                    ..._cart.entries.map((entry) {
+                      final product = _products.firstWhere(
+                        (product) => product.id == entry.key,
+                      );
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: KainPHCartItem(
+                          title: product.name,
+                          icon: product.icon,
+                          quantity: entry.value,
+                          lineTotal: _formatCurrency(product.price * entry.value),
+                          onIncrease: () => _addToCart(product),
+                          onDecrease: () => _removeFromCart(product),
+                          onRemove: () => _removeProduct(product),
+                        ),
+                      );
+                    }),
+                  ],
+                ),
         ),
         _buildCartSummary(),
       ],
-    );
-  }
-
-  Widget _buildEmptyCart() {
-    return const Center(
-      child: Padding(
-        padding: EdgeInsets.all(24),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.shopping_cart_outlined,
-              size: 56,
-              color: KainPHTheme.textSecondary,
-            ),
-            SizedBox(height: 12),
-            Text(
-              'No items yet',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w600,
-              ),
-            ),
-            SizedBox(height: 4),
-            Text(
-              'Tap a product to add it to the order.',
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                color: KainPHTheme.textSecondary,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCartItems() {
-    return ListView(
-      padding: const EdgeInsets.all(12),
-      children: _cart.entries.map((entry) {
-        final product = _products.firstWhere(
-          (product) => product.id == entry.key,
-        );
-
-        return KainPHCartItem(
-          title: product.name,
-          icon: product.icon,
-          quantity: entry.value,
-          lineTotal: _formatCurrency(product.price * entry.value),
-          onIncrease: () => _addToCart(product),
-          onDecrease: () => _removeFromCart(product),
-          onRemove: () => _removeProduct(product),
-        );
-      }).toList(),
     );
   }
 
@@ -727,7 +668,7 @@ class _PosScreenState extends State<PosScreen> {
       decoration: const BoxDecoration(
         border: Border(
           top: BorderSide(
-            color: Color(0xFFE5E7EB),
+            color: KainPHTheme.sand,
           ),
         ),
       ),
@@ -767,13 +708,24 @@ class _PosScreenState extends State<PosScreen> {
   // ============================================================
 
   void _addToCart(_Product product) {
-    setState(() {
-      _cart.update(
-        product.id,
-        (quantity) => quantity + 1,
-        ifAbsent: () => 1,
-      );
-    });
+    if (!product.available) {
+      _stockNotice('${product.name} is unavailable.');
+      return;
+    }
+    if (product.stock <= 0) {
+      _stockNotice('${product.name} is out of stock.');
+      return;
+    }
+    final next = (_cart[product.id] ?? 0) + 1;
+    if (next > product.stock) {
+      _stockNotice('Only ${product.stock} ${product.name} left.');
+      return;
+    }
+    setState(() => _cart[product.id] = next);
+  }
+
+  void _stockNotice(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message)));
   }
 
   void _removeFromCart(_Product product) {
@@ -1093,6 +1045,43 @@ class _PosScreenState extends State<PosScreen> {
           ],
         );
       },
+    );
+  }
+}
+
+class _EmptyCartMessage extends StatelessWidget {
+  const _EmptyCartMessage();
+
+  @override
+  Widget build(BuildContext context) {
+    return const Padding(
+      padding: EdgeInsets.all(24),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.shopping_cart_outlined,
+            size: 56,
+            color: KainPHTheme.textSecondary,
+          ),
+          SizedBox(height: 12),
+          Text(
+            'No items yet',
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          SizedBox(height: 4),
+          Text(
+            'Tap a product to add it to the order.',
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: KainPHTheme.textSecondary,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1489,6 +1478,9 @@ class _Product {
   final String category;
   final double price;
   final IconData icon;
+  final bool available;
+  final int stock;
+  final int reorderLevel;
 
   const _Product({
     required this.id,
@@ -1496,6 +1488,9 @@ class _Product {
     required this.category,
     required this.price,
     required this.icon,
+    this.available = true,
+    this.stock = 0,
+    this.reorderLevel = 0,
   });
 }
 
